@@ -97,11 +97,33 @@ export default function Register() {
         setBanner('That email already has an InviteU account — try signing in instead, or use another email.')
         return
       }
+      if (error.code === 'email_provider_disabled' || /email (signups|logins|sign-ins) are disabled/i.test(error.message || '')) {
+        setBanner(
+          'Email accounts are switched off on the server right now. The site owner can re-enable them in Supabase → Authentication → Providers → Email, then retry.',
+        )
+        return
+      }
+      if (error.code === 'over_email_send_rate_limit' || /rate limit|too many/i.test(error.message || '')) {
+        setBanner('Too many activation emails in a short window — wait a few minutes and try again.')
+        return
+      }
+      if (error.code === 'unexpected_failure' || /database error saving/i.test(error.message || '')) {
+        setBanner('A server-side trigger hiccup blocked account creation. Try again; if it keeps happening, the site owner should review the Supabase database triggers.')
+        return
+      }
       if (/weak/i.test(error.message || '')) {
         setErrors((err) => ({ ...err, password: 'Choose a stronger password — make it longer or mix in more characters.' }))
         return
       }
       setBanner('We could not create the account just now. Please try again in a moment.')
+      return
+    }
+
+    // Supabase answers an already-registered email with a phantom user
+    // (no identities) and no error — catch it before the inbox screen.
+    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      setStatus('idle')
+      setBanner('That email already has an InviteU account — try signing in instead, or use another email.')
       return
     }
 

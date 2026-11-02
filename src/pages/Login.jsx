@@ -12,6 +12,9 @@ function friendlyAuthError(code = '', message = '') {
   if (code === 'invalid_credentials' || /invalid login credentials/i.test(message)) {
     return 'That email and password don’t match an account. Double-check both and try again.'
   }
+  if (code === 'email_provider_disabled' || /email (signups|logins|sign-ins) are disabled/i.test(message)) {
+    return 'Email sign-in is switched off on the server right now — the site owner can re-enable it in Supabase → Authentication → Providers → Email.'
+  }
   if (code === 'email_not_confirmed' || /email ?not ?confirmed/i.test(message)) {
     return 'Please confirm your email first — look for the InviteU confirmation link in your inbox.'
   }
