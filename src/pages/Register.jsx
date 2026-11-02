@@ -4,6 +4,7 @@ import { useGSAP } from '@gsap/react'
 import gsap from 'gsap'
 import AuthLayout from '@/components/auth/AuthLayout'
 import Field from '@/components/auth/Field'
+import { supabase } from '@/lib/supabase'
 
 const EMAIL_RE = /^\S+@\S+\.\S+$/
 
@@ -14,8 +15,6 @@ const STRENGTH = [
   { label: 'Good', color: 'text-golddeep' },
   { label: 'Strong', color: 'text-forest' },
 ]
-const STRENGTH_BAR = ['', 'bg-clay', 'bg-golddeep', 'bg-gold', 'bg-forest']
-
 const STRENGTH_COLORS = ['', 'bg-clay', 'bg-golddeep', 'bg-gold', 'bg-forest']
 
 // Rough signal, not a security promise — good UX scaffolding for the real backend.
@@ -34,6 +33,10 @@ export default function Register() {
   const [values, setValues] = useState({ name: '', email: '', password: '', confirm: '', terms: false })
   const [errors, setErrors] = useState({})
   const [status, setStatus] = useState('idle')
+  const [banner, setBanner] = useState(null)
+  const [sentTo, setSentTo] = useState(null)
+  const [resent, setResent] = useState(false)
+  const [resending, setResending] = useState(false)
 
   useEffect(() => {
     document.title = 'InviteU · Create your account'
@@ -72,14 +75,57 @@ export default function Register() {
     return next
   }
 
-  const onSubmit = (e) => {
+  const onSubmit = async (e) => {
     e.preventDefault()
+    setBanner(null)
     const next = validate()
     setErrors(next)
     if (Object.keys(next).length > 0) return
     setStatus('submitting')
-    // Demo build: no server yet — simulate a short round trip, then head home.
-    setTimeout(() => navigate('/', { replace: true }), 900)
+
+    const { data, error } = await supabase.auth.signUp({
+      email: values.email.trim(),
+      password: values.password,
+      options: {
+        data: { full_name: values.name.trim() },
+      },
+    })
+
+    if (error) {
+      setStatus('idle')
+      if (error.code === 'user_already_exists' || /already registered|already exists/i.test(error.message || '')) {
+        setBanner('That email already has an InviteU account — try signing in instead, or use another email.')
+        return
+      }
+      if (/weak/i.test(error.message || '')) {
+        setErrors((err) => ({ ...err, password: 'Choose a stronger password — make it longer or mix in more characters.' }))
+        return
+      }
+      setBanner('We could not create the account just now. Please try again in a moment.')
+      return
+    }
+
+    if (!data.session) {
+      // This project requires email confirmation: no session until the link is tapped.
+      setSentTo(values.email.trim())
+      setStatus('confirm-email')
+      return
+    }
+    navigate('/', { replace: true })
+  }
+
+  const onResend = async () => {
+    setBanner(null)
+    setResending(true)
+    const { error } = await supabase.auth.resend({ type: 'signup', email: sentTo })
+    setResending(false)
+    if (error) {
+      setBanner(/rate limit/i.test(error.message || '')
+        ? 'Hang on a minute — confirmation emails can only be re-sent so often.'
+        : 'Could not send another email right now. Check the first one, or try again shortly.')
+      return
+    }
+    setResent(true)
   }
 
   return (
@@ -102,6 +148,45 @@ export default function Register() {
           </p>
         </div>
 
+        {status === 'confirm-email' ? (
+          <div className="auth-step rounded-3xl border border-gold/40 bg-cream p-6 sm:p-7">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gold/20 text-golddeep">
+                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 6h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1zm16 4-8 5-8-5" />
+                </svg>
+              </span>
+              <h2 className="font-display text-2xl font-semibold tracking-tight">Check your inbox.</h2>
+            </div>
+            <p className="mt-3 text-sm leading-relaxed text-bark">
+              A confirmation link is on its way to <span className="font-semibold text-ink">{sentTo}</span>. Open it
+              on this device and your account is ready — nothing else to fill in.
+            </p>
+            <p className="mt-2 text-xs text-bark/80">
+              Can’t spot it? It usually lands within a minute — check spam, then try a resend.
+            </p>
+            <div className="mt-5 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={onResend}
+                disabled={resending}
+                className="rounded-full bg-ink px-5 py-2 text-xs font-semibold text-cream transition hover:bg-forest disabled:opacity-60"
+              >
+                {resending ? 'Sending…' : 'Resend the link'}
+              </button>
+              <Link
+                to="/login"
+                className="rounded-full border border-ink/15 bg-cream px-5 py-2 text-xs font-semibold text-ink transition hover:border-gold hover:text-golddeep"
+              >
+                Back to sign in
+              </Link>
+            </div>
+            {resent && (
+              <p className="mt-3 text-xs font-medium text-forest">Another link is on its way — give it a minute.</p>
+            )}
+            {banner && <p role="alert" className="mt-3 text-xs font-medium text-clay">{banner}</p>}
+          </div>
+        ) : (
         <form noValidate className="mt-8 space-y-4" onSubmit={onSubmit}>
           <div className="auth-step">
             <Field
@@ -198,6 +283,12 @@ export default function Register() {
             )}
           </div>
 
+          {banner && (
+            <p role="alert" className="auth-step rounded-xl border border-clay/30 bg-clay/5 px-4 py-3 text-sm font-medium text-ink">
+              {banner}
+            </p>
+          )}
+
           <div className="auth-step pt-2">
             <button
               type="submit"
@@ -216,9 +307,9 @@ export default function Register() {
                 'Create account — it’s free'
               )}
             </button>
-            <p className="mt-3 text-center text-xs text-bark/80">Demo build — registrations are not stored yet.</p>
           </div>
         </form>
+        )}
       </div>
     </AuthLayout>
   )

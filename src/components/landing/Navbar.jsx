@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import useSession from '@/lib/useSession'
+import { supabase } from '@/lib/supabase'
 
 const LINKS = [
   { href: '#features', label: 'Features' },
@@ -11,6 +13,10 @@ const LINKS = [
 
 export default function Navbar() {
   const [open, setOpen] = useState(false)
+  const { session, loading } = useSession()
+  const firstName = session
+    ? (session.user.user_metadata?.full_name || session.user.email || '').split(/[&\s]/)[0] || 'you'
+    : null
 
   return (
     <header className="fixed inset-x-0 top-0 z-50 border-b border-ink/10 bg-paper/85 backdrop-blur-md">
@@ -31,15 +37,30 @@ export default function Navbar() {
         </ul>
 
         <div className="hidden items-center gap-4 md:flex">
-          <Link to="/login" className="text-sm font-medium text-bark transition hover:text-ink">
-            Log in
-          </Link>
-          <Link
-            to="/register"
-            className="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-cream transition hover:bg-forest"
-          >
-            Start free
-          </Link>
+          {loading ? null : session ? (
+            <>
+              <span className="max-w-[11rem] truncate text-sm font-semibold text-ink">Hi, {firstName}</span>
+              <button
+                type="button"
+                onClick={() => supabase.auth.signOut()}
+                className="text-sm font-medium text-bark transition hover:text-ink"
+              >
+                Log out
+              </button>
+            </>
+          ) : (
+            <>
+              <Link to="/login" className="text-sm font-medium text-bark transition hover:text-ink">
+                Log in
+              </Link>
+              <Link
+                to="/register"
+                className="rounded-full bg-ink px-4 py-2 text-sm font-semibold text-cream transition hover:bg-forest"
+              >
+                Start free
+              </Link>
+            </>
+          )}
         </div>
 
         <button
@@ -70,20 +91,35 @@ export default function Navbar() {
               </li>
             ))}
           </ul>
-          <Link
-            to="/login"
-            onClick={() => setOpen(false)}
-            className="mt-3 block rounded-full border border-ink/15 px-4 py-2.5 text-center text-sm font-semibold text-ink"
-          >
-            Log in
-          </Link>
-          <Link
-            to="/register"
-            onClick={() => setOpen(false)}
-            className="mt-2 block rounded-full bg-ink px-4 py-2.5 text-center text-sm font-semibold text-cream"
-          >
-            Start free
-          </Link>
+          {session ? (
+            <button
+              type="button"
+              onClick={() => {
+                supabase.auth.signOut()
+                setOpen(false)
+              }}
+              className="mt-3 block w-full rounded-full border border-ink/15 px-4 py-2.5 text-center text-sm font-semibold text-ink"
+            >
+              Log out
+            </button>
+          ) : (
+            <>
+              <Link
+                to="/login"
+                onClick={() => setOpen(false)}
+                className="mt-3 block rounded-full border border-ink/15 px-4 py-2.5 text-center text-sm font-semibold text-ink"
+              >
+                Log in
+              </Link>
+              <Link
+                to="/register"
+                onClick={() => setOpen(false)}
+                className="mt-2 block rounded-full bg-ink px-4 py-2.5 text-center text-sm font-semibold text-cream"
+              >
+                Start free
+              </Link>
+            </>
+          )}
         </div>
       )}
     </header>

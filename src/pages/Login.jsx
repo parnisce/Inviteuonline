@@ -4,8 +4,22 @@ import { useGSAP } from '@gsap/react'
 import gsap from 'gsap'
 import AuthLayout from '@/components/auth/AuthLayout'
 import Field from '@/components/auth/Field'
+import { supabase } from '@/lib/supabase'
 
 const EMAIL_RE = /^\S+@\S+\.\S+$/
+
+function friendlyAuthError(code = '', message = '') {
+  if (code === 'invalid_credentials' || /invalid login credentials/i.test(message)) {
+    return 'That email and password don’t match an account. Double-check both and try again.'
+  }
+  if (code === 'email_not_confirmed' || /email ?not ?confirmed/i.test(message)) {
+    return 'Please confirm your email first — look for the InviteU confirmation link in your inbox.'
+  }
+  if (code === 'over_request_rate_limit' || /rate limit/i.test(message)) {
+    return 'Too many attempts in a short while. Give it a minute and try again.'
+  }
+  return 'Something went wrong while signing in. Please try again in a moment.'
+}
 
 export default function Login() {
   const navigate = useNavigate()
@@ -13,6 +27,8 @@ export default function Login() {
   const [values, setValues] = useState({ email: '', password: '' })
   const [errors, setErrors] = useState({})
   const [status, setStatus] = useState('idle')
+  const [banner, setBanner] = useState(null)
+  const [notice, setNotice] = useState(null)
 
   useEffect(() => {
     document.title = 'InviteU · Sign in'
@@ -46,14 +62,59 @@ export default function Login() {
     return next
   }
 
-  const onSubmit = (e) => {
+  const onSubmit = async (e) => {
     e.preventDefault()
+    setBanner(null)
+    setNotice(null)
     const next = validate()
     setErrors(next)
     if (Object.keys(next).length > 0) return
     setStatus('submitting')
-    // Demo build: no server yet — simulate a short round trip, then head home.
-    setTimeout(() => navigate('/', { replace: true }), 900)
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: values.email.trim(),
+      password: values.password,
+    })
+
+    if (error) {
+      setStatus('idle')
+      setBanner(friendlyAuthError(error.code, error.message))
+      return
+    }
+    if (!data.session) {
+      setStatus('idle')
+      setBanner('Sign-in did not finish — please try again in a moment.')
+      return
+    }
+    navigate('/', { replace: true })
+  }
+
+  const onForgotPassword = async () => {
+    setBanner(null)
+    setNotice(null)
+    setErrors((err) => ({ ...err, email: undefined }))
+    if (!EMAIL_RE.test(values.email)) {
+      setErrors({
+        email: 'Enter the email on your account above, then tap “Forgot password?” to get a reset link.',
+      })
+      return
+    }
+    setStatus('resetting')
+    const { error } = await supabase.auth.resetPasswordForEmail(values.email.trim(), {
+      redirectTo: `${window.location.origin}/reset-password`,
+    })
+    setStatus('idle')
+    if (error) {
+      setBanner(
+        /rate limit/i.test(error.message || '')
+          ? 'A reset link is already on its way — check your inbox, or wait a minute and try again.'
+          : friendlyAuthError(error.code, error.message),
+      )
+      return
+    }
+    setNotice(
+      `Password reset link sent to ${values.email.trim()} — check your inbox (and spam, just in case).`,
+    )
   }
 
   return (
@@ -104,17 +165,28 @@ export default function Login() {
               onChange={set('password')}
               error={errors.password}
               aside={
-                <button type="button" className="text-xs font-medium text-golddeep underline-offset-4 hover:underline">
-                  Forgot password?
+                <button
+                  type="button"
+                  onClick={onForgotPassword}
+                  disabled={status === 'resetting'}
+                  className="text-xs font-medium text-golddeep underline-offset-4 hover:underline disabled:opacity-60"
+                >
+                  {status === 'resetting' ? 'Sending…' : 'Forgot password?'}
                 </button>
               }
             />
           </div>
 
-          <label className="auth-step flex items-center gap-2 text-sm text-bark">
-            <input type="checkbox" name="remember" className="h-4 w-4 accent-gold" />
-            Keep me signed in
-          </label>
+          {(banner || notice) && (
+            <p
+              role={banner ? 'alert' : 'status'}
+              className={`auth-step rounded-xl border px-4 py-3 text-sm font-medium ${
+                banner ? 'border-clay/30 bg-clay/5 text-ink' : 'border-forest/30 bg-forest/5 text-ink'
+              }`}
+            >
+              {banner || notice}
+            </p>
+          )}
 
           <div className="auth-step pt-2">
             <button
@@ -134,25 +206,8 @@ export default function Login() {
                 'Sign in'
               )}
             </button>
-            <p className="mt-3 text-center text-xs text-bark/80">Demo build — sign-in is not wired to a server yet.</p>
           </div>
         </form>
-
-        <div className="auth-step my-6 flex items-center gap-4 text-xs text-bark/70">
-          <span className="h-px flex-1 bg-ink/10" />
-          or continue with
-          <span className="h-px flex-1 bg-ink/10" />
-        </div>
-
-        <div className="auth-step">
-          <button
-            type="button"
-            className="flex w-full items-center justify-center gap-3 rounded-full border border-ink/15 bg-cream px-6 py-3 text-sm font-semibold text-ink transition hover:border-gold hover:text-golddeep"
-          >
-            <span aria-hidden="true" className="font-display text-lg font-bold text-golddeep">G</span>
-            Continue with Google
-          </button>
-        </div>
       </div>
     </AuthLayout>
   )
