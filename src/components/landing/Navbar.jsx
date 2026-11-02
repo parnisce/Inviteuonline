@@ -71,9 +71,16 @@ export default function Navbar() {
             ))}
           </ul>
           <Link
+            to="/login"
+            onClick={() => setOpen(false)}
+            className="mt-3 block rounded-full border border-ink/15 px-4 py-2.5 text-center text-sm font-semibold text-ink"
+          >
+            Log in
+          </Link>
+          <Link
             to="/register"
             onClick={() => setOpen(false)}
-            className="mt-3 block rounded-full bg-ink px-4 py-2.5 text-center text-sm font-semibold text-cream"
+            className="mt-2 block rounded-full bg-ink px-4 py-2.5 text-center text-sm font-semibold text-cream"
           >
             Start free
           </Link>

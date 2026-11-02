@@ -9,8 +9,8 @@ export default function Footer() {
   return (
     <footer className="border-t border-ink/10 bg-cream">
       <div className="mx-auto max-w-6xl px-5 py-14">
-        <div className="grid gap-10 md:grid-cols-[1.4fr_repeat(4,1fr)]">
-          <div>
+        <div className="grid grid-cols-2 gap-10 md:grid-cols-[1.4fr_repeat(4,1fr)]">
+          <div className="col-span-2 md:col-span-1">
             <a href="#top" className="font-display text-xl font-semibold tracking-tight">
               Invite<span className="text-golddeep">U</span>
               <span className="text-gold">.</span>

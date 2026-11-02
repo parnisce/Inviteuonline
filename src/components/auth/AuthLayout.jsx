@@ -70,12 +70,29 @@ export default function AuthLayout({ switchLink, children }) {
 
       {/* Form panel */}
       <section className="flex flex-col px-6 pb-10 pt-6 sm:px-10 lg:px-14">
+        {/* Mobile brand band — the desktop brand panel is hidden below lg */}
+        <div className="relative mb-8 overflow-hidden rounded-3xl bg-forest px-6 py-7 text-cream lg:hidden">
+          <PetalsCanvas className="pointer-events-none absolute inset-0 h-full w-full opacity-60" />
+          <div aria-hidden="true" className="absolute -right-16 -top-16 h-40 w-40 rounded-full border border-dashed border-gold/30" />
+          <div className="relative z-10">
+            <h2 className="font-display text-2xl font-semibold leading-snug">One link. Every guest. Zero chaos.</h2>
+            <ul className="mt-3 flex flex-wrap gap-1.5">
+              {['Personal RSVP links', 'Seating', 'Photo albums'].map((item) => (
+                <li key={item} className="rounded-full border border-cream/25 bg-cream/5 px-2.5 py-1 text-xs text-cream/90">
+                  {item}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-3 text-xs text-cream/60">Free for 30 guests · no card needed · live in minutes</p>
+          </div>
+        </div>
+
         <div className="flex items-center justify-between">
           <Link to="/" className={`font-display text-xl font-semibold tracking-tight${switchLink ? '' : ' lg:hidden'}`}>
             Invite<span className="text-golddeep">U</span>
             <span className="text-gold">.</span>
           </Link>
-          <div className="ml-auto text-sm text-bank text-bark">{switchLink}</div>
+          <div className="ml-auto text-sm text-bark">{switchLink}</div>
         </div>
         <div className="mx-auto flex w-full max-w-sm flex-1 flex-col justify-center py-10">{children}</div>
       </section>

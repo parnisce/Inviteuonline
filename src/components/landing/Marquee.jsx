@@ -14,7 +14,7 @@ function Belt({ hidden }) {
     <ul className="flex items-center gap-10 pr-10" aria-hidden={hidden || undefined}>
       {LABELS.map((label) => (
         <li key={label} className="flex items-center gap-10">
-          <span className="font-display text-lg italic text-bark">{label}</span>
+          <span className="font-display text-base italic text-bark sm:text-lg">{label}</span>
           <svg viewBox="0 0 12 12" className="h-2 w-2 shrink-0 fill-gold">
             <rect x="2" y="2" width="8" height="8" transform="rotate(45 6 6)" />
           </svg>

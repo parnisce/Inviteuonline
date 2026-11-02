@@ -34,7 +34,7 @@ const QUOTES = [
 function Stat({ value, suffix, label }) {
   return (
     <div className="text-center">
-      <p className="font-display text-4xl font-semibold tracking-tight md:text-5xl">
+      <p className="font-display text-3xl font-semibold tracking-tight sm:text-4xl md:text-5xl">
         <span data-target={value} data-suffix={suffix}>
           0
         </span>
